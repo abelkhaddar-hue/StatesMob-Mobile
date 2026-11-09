@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SafeMobility",
+    "slug": "safemobility",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/brand/logo.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0e2133",
+        "foregroundImage": "./assets/brand/logo.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/brand/logo.png",
+      "bundler": "metro",
+      "name": "SafeMobility",
+      "shortName": "SafeMobility",
+      "themeColor": "#071a2c",
+      "backgroundColor": "#071a2c"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "scheme": "safemobility",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "backgroundColor": "#071a2c"
+  }
+}
