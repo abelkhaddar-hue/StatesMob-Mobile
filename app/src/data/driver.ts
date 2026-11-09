@@ -99,7 +99,7 @@ export function validate(step: number, a: DriverApplication): FieldErrors {
     if (!isEmail(a.email)) e.email = 'Enter a valid email address.'
     const n = age(a.birthDate)
     if (n === undefined) e.birthDate = 'Use the format MM/DD/YYYY.'
-    else if (n < MIN_AGE) e.birthDate = `You need to be at least ${MIN_AGE} to drive with SafeMobility.`
+    else if (n < MIN_AGE) e.birthDate = `You need to be at least ${MIN_AGE} to drive with StatesMob.`
   }
   if (step === 1) {
     if (!isUsPhone(a.phone)) e.phone = 'Enter a 10-digit US phone number.'

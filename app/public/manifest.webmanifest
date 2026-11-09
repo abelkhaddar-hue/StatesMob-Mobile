@@ -1,6 +1,6 @@
 {
-  "name": "SafeMobility",
-  "short_name": "SafeMobility",
+  "name": "StatesMob",
+  "short_name": "StatesMob",
   "description": "Book and track rides across Cincinnati and Northern Kentucky.",
   "start_url": "/",
   "scope": "/",

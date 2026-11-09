@@ -98,7 +98,7 @@ export default function Account() {
           </View>
         </View>
       ) : null}
-      <Text variant="xs" tone="muted" center>SafeMobility 1.0 · Test server — bookings are real requests seen by registered drivers.</Text>
+      <Text variant="xs" tone="muted" center>StatesMob 1.0 · Test server — bookings are real requests seen by registered drivers.</Text>
     </TabScreen>
   )
 }

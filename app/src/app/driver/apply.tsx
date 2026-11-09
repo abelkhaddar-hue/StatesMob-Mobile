@@ -245,7 +245,7 @@ function ReviewStep({ a, update, goTo, error }: StepProps & { goTo: (s: number) 
         <Text variant="sm" tone="muted">Our screening partner will email you a secure link to finish the check. We never ask for your Social Security number in the app.</Text>
       </View>
       <Checkbox checked={a.consent} onChange={(consent) => update({ consent })} invalid={!!error}>
-        <Text variant="sm">I agree to a background and driving record check, and to the SafeMobility driver terms.</Text>
+        <Text variant="sm">I agree to a background and driving record check, and to the StatesMob driver terms.</Text>
       </Checkbox>
     </View>
   )

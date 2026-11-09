@@ -1,4 +1,4 @@
-// Réservations, suivi et abonnement semaine : tout passe par la base SafeMobility (fonctions du schéma « safemobility »).
+// Réservations, suivi et abonnement semaine : tout passe par la base StatesMob (fonctions du schéma « safemobility »).
 import { ApiError, booking, phoneDigits } from './booking'
 import { alongRoute, fakeRoute, geo, type LngLat, type Place } from './places'
 import { quote, weeklyEstimate, type Payment, type TripType, type VehicleCode } from './fleet'

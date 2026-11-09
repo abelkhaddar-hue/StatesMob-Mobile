@@ -141,7 +141,7 @@ function RateBlock({ t }: { t: Trip }) {
   const rate = useAction(trips.rate)
   const [done, setDone] = useState(!!t.stars)
   if (done) {
-    return <EmptyState icon={BadgeCheck} title="Thanks for riding with SafeMobility" body={`You rated ${t.driver?.firstName ?? 'your driver'} ${stars} star${stars > 1 ? 's' : ''}.`}
+    return <EmptyState icon={BadgeCheck} title="Thanks for riding with StatesMob" body={`You rated ${t.driver?.firstName ?? 'your driver'} ${stars} star${stars > 1 ? 's' : ''}.`}
       action={<Button label="Book another ride" onPress={() => router.navigate('/')} />} />
   }
   return (

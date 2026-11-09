@@ -1,4 +1,4 @@
-// Connexion à la base SafeMobility (Supabase, schéma « safemobility »).
+// Connexion à la base StatesMob (Supabase, schéma « safemobility »).
 // Deux sessions séparées sur le même appareil : « passenger » et « driver », chacune avec son compte anonyme,
 // pour pouvoir tester une course réelle avec deux onglets (ou deux téléphones).
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
@@ -37,7 +37,7 @@ function signedIn(role: Role): Promise<SupabaseClient<any, any, any>> {
     const { data } = await c.auth.getSession()
     if (!data.session) {
       const { error } = await c.auth.signInAnonymously()
-      if (error) throw new ApiError('auth', 'Could not connect to SafeMobility. Check your internet and try again.')
+      if (error) throw new ApiError('auth', 'Could not connect to StatesMob. Check your internet and try again.')
     }
     return c
   })().catch((e) => { ready[role] = undefined; throw e }))

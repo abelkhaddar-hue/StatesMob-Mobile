@@ -1,4 +1,4 @@
-// La flotte SafeMobility, les types de trajet et le calcul du prix.
+// La flotte StatesMob, les types de trajet et le calcul du prix.
 // Tarifs provisoires (le module de prix du site n'était pas dans le zip) : à remplacer par la grille du client.
 import { ApiError } from './booking'
 import { AIRPORT_ID, distanceM, inArea, trip, type Place } from './places'
@@ -61,6 +61,6 @@ export const reasons = ['Available 24/7', 'Professional drivers', 'Airport speci
 
 export const testimonials = [
   { quote: 'Booked an early airport run for a 5am flight and the driver was outside ten minutes before pickup. Smooth, quiet ride to CVG.', name: 'Margaret H.', place: 'Hyde Park, Cincinnati' },
-  { quote: 'We use SafeMobility for client pickups now instead of rideshare apps. Cleaner cars, and drivers who know the city.', name: 'David O.', place: 'Downtown Cincinnati' },
+  { quote: 'We use StatesMob for client pickups now instead of rideshare apps. Cleaner cars, and drivers who know the city.', name: 'David O.', place: 'Downtown Cincinnati' },
   { quote: 'Booked the Grand Highlander for a wedding party of seven. Everyone fit comfortably with luggage.', name: 'Angela R.', place: 'Mason, Ohio' },
 ]

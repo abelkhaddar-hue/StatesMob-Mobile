@@ -159,7 +159,7 @@ export default function Home() {
           </Carousel>
         </Section>
 
-        <Section eyebrow="Why SafeMobility" title="What sets every trip apart">
+        <Section eyebrow="Why StatesMob" title="What sets every trip apart">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 }}>
             {reasons.map((r, i) => (
               <View key={r} style={{ width: '50%', gap: 4, paddingRight: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: color('border') }}>
@@ -196,11 +196,11 @@ export default function Home() {
           </View>
         </Section>
 
-        <Touchable onPress={() => router.push('/driver')} accessibilityRole="button" accessibilityLabel="Driving for SafeMobility? Become a driver"
+        <Touchable onPress={() => router.push('/driver')} accessibilityRole="button" accessibilityLabel="Driving for StatesMob? Become a driver"
           style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: tokens.radius.lg, borderWidth: 1, borderColor: color('accent'), backgroundColor: pressed ? color('surface-2') : color('surface') })}>
           <Car size={28} color={color('accent')} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text weight={700}>Driving for SafeMobility?</Text>
+            <Text weight={700}>Driving for StatesMob?</Text>
             <Text variant="sm" tone="muted">Register your vehicle and start receiving ride requests.</Text>
           </View>
           <ChevronRight size={20} color={color('text-muted')} />

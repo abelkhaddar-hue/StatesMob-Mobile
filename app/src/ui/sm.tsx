@@ -1,4 +1,4 @@
-// Petits composants de la marque SafeMobility : logo, étiquette mono, appel du dispatch.
+// Petits composants de la marque StatesMob : logo, étiquette mono, appel du dispatch.
 import { Image, Linking, View } from 'react-native'
 import { Headset } from 'lucide-react-native'
 import { color, monoLabel, shadow, tokens } from '@/theme'
@@ -15,9 +15,9 @@ export function Eyebrow({ children, tone = 'muted' }: { children: string; tone?:
 // Appeler le dispatch (aide 24/7). Le numéro reste affiché en texte : le lien « tel: » ne marche pas partout.
 export function CallButton({ compact }: { compact?: boolean }) {
   const call = () => Linking.openURL(DISPATCH_TEL).catch(() => {})
-  if (compact) return <IconButton icon={Headset} label={`Call SafeMobility dispatch, ${DISPATCH_PHONE}`} variant="accent" onPress={call} />
+  if (compact) return <IconButton icon={Headset} label={`Call StatesMob dispatch, ${DISPATCH_PHONE}`} variant="accent" onPress={call} />
   return (
-    <Touchable onPress={call} accessibilityRole="button" accessibilityLabel={`Call SafeMobility dispatch, ${DISPATCH_PHONE}`}
+    <Touchable onPress={call} accessibilityRole="button" accessibilityLabel={`Call StatesMob dispatch, ${DISPATCH_PHONE}`}
       style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: tokens.radius.lg, borderWidth: 1, borderColor: color('border'), backgroundColor: pressed ? color('surface-2') : color('surface') })}>
       <View style={{ width: 40, height: 40, borderRadius: tokens.radius.pill, backgroundColor: color('accent'), alignItems: 'center', justifyContent: 'center' }}>
         <Headset size={18} color={color('on-accent')} />
@@ -33,10 +33,10 @@ export function CallButton({ compact }: { compact?: boolean }) {
 // Pastille logo + nom, en haut des écrans principaux.
 export function BrandPill() {
   return (
-    <View accessible accessibilityRole="header" accessibilityLabel="SafeMobility"
+    <View accessible accessibilityRole="header" accessibilityLabel="StatesMob"
       style={[{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 4, paddingRight: 14, height: 48, borderRadius: tokens.radius.pill, backgroundColor: color('bg') }, shadow('card')]}>
       <Image source={require('../../assets/brand/logo.png')} style={{ width: 40, height: 40, borderRadius: 20 }} accessibilityIgnoresInvertColors />
-      <Text variant="label-lg" weight={700}>Safe<Text variant="label-lg" weight={700} style={{ color: color('accent') }}>Mobility</Text></Text>
+      <Text variant="label-lg" weight={700}>States<Text variant="label-lg" weight={700} style={{ color: color('accent') }}>Mob</Text></Text>
     </View>
   )
 }

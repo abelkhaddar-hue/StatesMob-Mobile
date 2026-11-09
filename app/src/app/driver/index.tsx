@@ -22,12 +22,12 @@ export default function DriverHome() {
 
 function Pitch({ step }: { step: number | null }) {
   return (
-    <Screen title="Drive with SafeMobility" footer={<>
+    <Screen title="Drive with StatesMob" footer={<>
       <Button label={step != null ? `Continue application · ${STEPS[step]}` : 'Start application'} size="lg" fullWidth onPress={() => router.push('/driver/apply')} />
       <Text variant="xs" tone="subtle" center>Takes about 10 minutes · Free to apply</Text>
     </>}>
       <View style={{ gap: 6 }}>
-        <Eyebrow tone="accent">Driving for SafeMobility?</Eyebrow>
+        <Eyebrow tone="accent">Driving for StatesMob?</Eyebrow>
         <Text variant="xl" heading>Register your vehicle and start receiving ride requests.</Text>
         <Text tone="muted">Airport transfers, business clients and scheduled rides across Cincinnati and Northern Kentucky.</Text>
       </View>
@@ -82,7 +82,7 @@ function Review() {
       : <Button label="Back to the app" size="lg" fullWidth onPress={() => router.dismissTo('/')} />}>
       <View style={{ gap: 4 }} accessibilityLiveRegion="polite">
         <Text variant="xl" heading>{d.verified ? `You're verified, ${d.firstName}!` : 'Pending verification'}</Text>
-        <Text tone="muted">{d.verified ? 'Welcome to SafeMobility. Ride requests that fit your vehicle are waiting.' : 'Only verified drivers can confirm rides. This normally takes 1 to 3 business days.'}</Text>
+        <Text tone="muted">{d.verified ? 'Welcome to StatesMob. Ride requests that fit your vehicle are waiting.' : 'Only verified drivers can confirm rides. This normally takes 1 to 3 business days.'}</Text>
       </View>
 
       <View>

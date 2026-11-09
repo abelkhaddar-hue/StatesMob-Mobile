@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SafeMobility",
+    "name": "StatesMob",
     "slug": "safemobility",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,8 +19,8 @@
     "web": {
       "favicon": "./assets/brand/logo.png",
       "bundler": "metro",
-      "name": "SafeMobility",
-      "shortName": "SafeMobility",
+      "name": "StatesMob",
+      "shortName": "StatesMob",
       "themeColor": "#071a2c",
       "backgroundColor": "#071a2c"
     },
