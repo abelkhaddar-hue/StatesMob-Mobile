@@ -6,8 +6,10 @@ import { CalendarDays, Car, ChevronRight, LocateFixed, Quote as QuoteIcon, Repea
 import { booking, serviceAreas } from '@/data/booking'
 import { fleet, reasons, services, testimonials } from '@/data/fleet'
 import { draft, useDraft, vehicleFor } from '@/data/draft'
-import { geo, places, AIRPORT_ID } from '@/data/places'
+import { formatMiles, formatMinutes, geo, places, AIRPORT_ID, type Fix } from '@/data/places'
 import { formatWhen, isUpcoming, statusLabel, trips, type Trip } from '@/data/trips'
+import { useRoute } from '@/data/hooks'
+import { RideMap } from '@/ui/map'
 import { color, shadow, tokens } from '@/theme'
 import { Text } from '@/ui/Text'
 import { Button } from '@/ui/Button'
@@ -64,8 +66,15 @@ export default function Home() {
   const [name, setName] = useState<string>()
   const [tried, setTried] = useState(false)
 
+  const [fix, setFix] = useState<Fix>()
+  const r = useRoute(d.pickup?.point, d.dropoff?.point)
+
+  // Départ = position GPS du client (centre-ville s'il est hors zone ou si le GPS est refusé).
   useEffect(() => {
-    if (!draft.get().pickup) geo.myPosition().then(geo.reverse).then((p) => { if (!draft.get().pickup) draft.set({ pickup: p }) }).catch(() => {})
+    geo.locate().then(async (f) => {
+      setFix(f)
+      if (!draft.get().pickup) { const p = await geo.reverse(f.point); if (!draft.get().pickup) draft.set({ pickup: p }) }
+    }).catch(() => {})
   }, [])
 
   useFocusEffect(useCallback(() => {
@@ -117,8 +126,21 @@ export default function Home() {
           {mode === 'private' ? (
             <>
               <AddressField kind="pickup" value={d.pickup?.name} placeholder="Finding your location…" onPress={() => router.push({ pathname: '/place', params: { field: 'pickup' } })} />
+              {fix && fix.source !== 'gps' && d.pickup && !d.dropoff ? (
+                <Text variant="xs" tone="subtle">{fix.source === 'outside' ? "You're outside our service area, so pickup starts downtown. Change it anytime." : 'Location is off: pickup starts downtown. Change it anytime.'}</Text>
+              ) : null}
               <AddressField kind="dropoff" value={d.dropoff?.name} placeholder="CVG Airport, downtown, a hotel…" error={tried && missing.dropoff ? 'Add a destination.' : undefined}
                 onPress={() => router.push({ pathname: '/place', params: { field: 'dropoff' } })} />
+              {d.pickup && d.dropoff ? (
+                <View style={{ gap: 6 }}>
+                  <View style={{ height: 170, borderRadius: tokens.radius.md, overflow: 'hidden' }}>
+                    <RideMap pickup={d.pickup.point} dropoff={d.dropoff.point} route={r.route?.route} label={`Route from ${d.pickup.name} to ${d.dropoff.name}`} />
+                  </View>
+                  <Text variant="xs" tone="muted" center accessibilityLiveRegion="polite">
+                    {r.loading || !r.route ? 'Finding the best route…' : `${formatMiles(r.route.distanceM)} · about ${formatMinutes(r.route.durationS)} by road`}
+                  </Text>
+                </View>
+              ) : null}
               <PickerRow icon={CalendarDays} label="Pickup date and time" value={d.pickupAt ? formatWhen(d.pickupAt) : undefined} placeholder="Choose when"
                 error={tried && missing.when ? 'Choose a pickup time at least 15 minutes from now.' : undefined} onPress={() => router.push('/when')} />
               <Stepper label="Passengers" value={d.passengers} max={7} unit={['passenger', 'passengers']}

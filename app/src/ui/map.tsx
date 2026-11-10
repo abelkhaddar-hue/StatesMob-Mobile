@@ -5,9 +5,9 @@ import { color, shadow, tokens } from '@/theme'
 
 type LngLat = { lng: number; lat: number }
 
-// Carte de démonstration : projette les coordonnées dans la vue, sans fond de carte réel.
-// La vraie carte (Google Maps, react-native-maps) la remplacera avec les mêmes props.
-export function FakeMap({ pickup, dropoff, driver, me, route, children, label = 'Map', onPick, pin }: {
+// Carte sur mobile natif (en attendant react-native-maps) : projette les coordonnées dans la vue, sans fond de carte.
+// Sur le web, map.web.tsx affiche la vraie carte OpenStreetMap avec les mêmes props.
+export function RideMap({ pickup, dropoff, driver, me, route, children, label = 'Map', onPick, pin }: {
   pickup?: LngLat | null; dropoff?: LngLat | null; driver?: (LngLat & { heading?: number }) | null; me?: LngLat | null
   route?: LngLat[] | null; children?: ReactNode; label?: string
   onPick?: (p: LngLat) => void; pin?: LngLat | null

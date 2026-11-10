@@ -6,7 +6,7 @@ import { weeklyEstimate, vehicle } from '@/data/fleet'
 import { useDraft } from '@/data/draft'
 import { formatUSD } from '@/data/places'
 import { DAYS, formatClock, plans, type Day } from '@/data/trips'
-import { useAction } from '@/data/hooks'
+import { useAction, useRoute } from '@/data/hooks'
 import { color, tokens } from '@/theme'
 import { Screen } from '@/ui/layout'
 import { Text } from '@/ui/Text'
@@ -30,10 +30,11 @@ export default function Weekly() {
   const [tried, setTried] = useState(false)
   const send = useAction(plans.create)
 
+  const r = useRoute(d.home?.point, d.work?.point)
   const estimate = useMemo(() => {
-    if (!d.home || !d.work || !days.length) return null
-    try { return weeklyEstimate(d.home, d.work, days.length, passengers) } catch (e) { return { error: e instanceof ApiError ? e.message : String(e) } }
-  }, [d.home, d.work, days.length, passengers])
+    if (!d.home || !d.work || !days.length || !r.route) return null
+    try { return weeklyEstimate(d.home, d.work, days.length, passengers, r.route) } catch (e) { return { error: e instanceof ApiError ? e.message : String(e) } }
+  }, [d.home, d.work, days.length, passengers, r.route])
 
   const errors = tried ? {
     home: d.home ? undefined : 'Add your home address.',

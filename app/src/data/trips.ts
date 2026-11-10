@@ -1,6 +1,6 @@
 // Réservations, suivi et abonnement semaine : tout passe par la base StatesMob (fonctions du schéma « safemobility »).
 import { ApiError, booking, phoneDigits } from './booking'
-import { alongRoute, fakeRoute, geo, type LngLat, type Place } from './places'
+import { alongRoute, fakeRoute, geo, route, type LngLat, type Place } from './places'
 import { quote, weeklyEstimate, type Payment, type TripType, type VehicleCode } from './fleet'
 import { rpc } from './supabase'
 
@@ -20,6 +20,7 @@ export type Trip = {
   confirmedAt: string | null; onTheWayAt: string | null; arrivedAt: string | null; startedAt: string | null
   completedAt: string | null; cancelledAt: string | null; cancelledBy: 'passenger' | 'driver' | null
   stars: number | null; createdAt: string; driver: TripDriver | null
+  driverLocation: { lat: number; lng: number; heading: number; at: string } | null
 }
 
 export type PlanStatus = 'pending' | 'quoted' | 'active' | 'cancelled'
@@ -56,7 +57,7 @@ async function contact(i: { fullName: string; phone: string; email: string }) {
 
 export const trips = {
   book: async (i: BookingInput): Promise<Trip> => {
-    const q = quote(i.pickup, i.destination, i.vehicle)
+    const q = quote(i.pickup, i.destination, i.vehicle, await route(i.pickup.point, i.destination.point))
     const c = await contact(i)
     const t = await rpc<Trip>('passenger', 'book', { p: { ...i, ...c, distanceM: q.distanceM, durationS: q.durationS, priceCents: q.priceCents, fixedRate: q.fixedRate } })
     geo.remember(i.destination)
@@ -76,7 +77,7 @@ export const trips = {
 export const plans = {
   create: async (i: PlanInput): Promise<Plan> => {
     if (!i.days.length) throw new ApiError('days_required', 'Pick at least one day.')
-    const e = weeklyEstimate(i.home, i.work, i.days.length, i.passengers)
+    const e = weeklyEstimate(i.home, i.work, i.days.length, i.passengers, await route(i.home.point, i.work.point))
     const c = await contact(i)
     return rpc<Plan>('passenger', 'create_plan', { p: { ...i, ...c, distanceM: e.distanceM, pricePerWeekCents: e.pricePerWeekCents } })
   },
@@ -113,14 +114,24 @@ export function minutesAway(t: Trip) {
   return Math.max(1, Math.ceil(left))
 }
 
-// Position estimée du chauffeur sur la carte (pas encore de GPS réel).
+// Point de départ du chauffeur quand il n'envoie pas encore sa position : à quelques rues du client.
+export const approachStart = (t: Pick<Trip, 'pickup' | 'etaMinutes'>): LngLat => {
+  const p = t.pickup.point, m = t.etaMinutes ?? 10
+  return { lat: p.lat + 0.004 + m * 0.0012, lng: p.lng - 0.006 - m * 0.0015 }
+}
+
+// Position en direct envoyée par le téléphone du chauffeur depuis moins d'une minute.
+export function livePosition(t: Trip): (LngLat & { heading: number }) | null {
+  const l = t.driverLocation
+  return l && Date.now() - Date.parse(l.at) < 60_000 ? { lat: l.lat, lng: l.lng, heading: l.heading } : null
+}
+
+// Position du chauffeur sur la carte : en direct si possible, sinon estimée d'après les heures de la course.
 export function driverPosition(t: Trip): (LngLat & { heading: number }) | null {
+  const live = livePosition(t)
+  if (live) return live
   const since = (iso: string | null) => (iso ? (Date.now() - Date.parse(iso)) / 1000 : 0)
-  if (t.status === 'on_the_way' && t.etaMinutes) {
-    const p = t.pickup.point
-    const start = { lat: p.lat + 0.006 + t.etaMinutes * 0.0012, lng: p.lng - 0.008 - t.etaMinutes * 0.0015 }
-    return alongRoute(fakeRoute(start, p), Math.min(0.95, since(t.onTheWayAt) / (t.etaMinutes * 60)))
-  }
+  if (t.status === 'on_the_way' && t.etaMinutes) return alongRoute(fakeRoute(approachStart(t), t.pickup.point), Math.min(0.95, since(t.onTheWayAt) / (t.etaMinutes * 60)))
   if (t.status === 'arrived') return { ...t.pickup.point, heading: 0 }
   if (t.status === 'in_progress') return alongRoute(fakeRoute(t.pickup.point, t.destination.point), Math.min(0.97, since(t.startedAt) / t.durationS))
   if (t.status === 'completed') return { ...t.destination.point, heading: 0 }

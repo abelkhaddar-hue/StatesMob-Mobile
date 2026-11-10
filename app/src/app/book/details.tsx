@@ -6,7 +6,7 @@ import { quote, vehicle } from '@/data/fleet'
 import { draft, useDraft } from '@/data/draft'
 import { formatUSD } from '@/data/places'
 import { formatWhen, trips } from '@/data/trips'
-import { useAction } from '@/data/hooks'
+import { useAction, useRoute } from '@/data/hooks'
 import { color, tokens } from '@/theme'
 import { Screen } from '@/ui/layout'
 import { Text } from '@/ui/Text'
@@ -25,7 +25,8 @@ export default function Details() {
   const [c, setC] = useState({ fullName: saved?.fullName ?? '', phone: saved ? formatUsPhone(saved.phone) : '', email: saved?.email ?? '' })
   const [tried, setTried] = useState(false)
   const send = useAction(trips.book)
-  const q = d.pickup && d.dropoff ? quote(d.pickup, d.dropoff, d.vehicle) : null
+  const r = useRoute(d.pickup?.point, d.dropoff?.point)
+  const q = d.pickup && d.dropoff && r.route ? quote(d.pickup, d.dropoff, d.vehicle, r.route) : null
   const v = vehicle(d.vehicle)
   const errors = tried ? {
     fullName: c.fullName.trim() ? undefined : 'Add your full name.',

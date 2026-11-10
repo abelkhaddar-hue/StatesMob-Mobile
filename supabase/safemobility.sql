@@ -1,3 +1,4 @@
+-- À appliquer ensuite : live_location.sql (position du chauffeur en direct).
 -- SafeMobility : réservations à l'avance, abonnements trajet domicile-travail, chauffeurs.
 -- Rangé dans son propre schéma « safemobility » (projet Supabase partagé avec StatesMob).
 -- Aucun accès direct aux tables : tout passe par les fonctions ci-dessous, qui vérifient auth.uid().

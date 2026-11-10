@@ -3,17 +3,18 @@ import { Linking, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ban, BadgeCheck, Phone } from 'lucide-react-native'
 import { vehicle } from '@/data/fleet'
-import { fakeRoute, formatMiles, formatMinutes, formatUSD } from '@/data/places'
+import { formatMiles, formatMinutes, formatUSD, remaining } from '@/data/places'
 import { driving, type DriverStep } from '@/data/driver'
-import { driverPosition, formatWhen, statusLabel, type Trip } from '@/data/trips'
-import { useAction, useLoad } from '@/data/hooks'
+import { formatWhen, statusLabel, type Trip } from '@/data/trips'
+import { useShareLocation } from '@/data/live'
+import { useAction, useLoad, useRoute } from '@/data/hooks'
 import { formatUsPhone } from '@/data/booking'
 import { color, tokens } from '@/theme'
 import { ErrorBlock, Loading, Screen } from '@/ui/layout'
 import { Text } from '@/ui/Text'
 import { Button } from '@/ui/Button'
 import { Avatar, Banner, Chip, Divider, EmptyState } from '@/ui/primitives'
-import { FakeMap } from '@/ui/map'
+import { RideMap } from '@/ui/map'
 import { RouteSummary } from '@/ui/trip'
 import { haptic } from '@/ui/haptics'
 import { Eyebrow } from '@/ui/sm'
@@ -38,6 +39,12 @@ export default function DriveTrip() {
   const [eta, setEta] = useState(10)
   const [confirmRelease, setConfirmRelease] = useState(false)
   const back = () => (router.canGoBack() ? router.back() : router.replace('/drive'))
+  // Pendant la course, le téléphone envoie sa position ; le passager la voit en direct.
+  const shared = useShareLocation(trip.data)
+  const t0 = trip.data
+  const near = shared ? { lat: +shared.point.lat.toFixed(3), lng: +shared.point.lng.toFixed(3) } : null
+  const approach = useRoute(t0?.status === 'on_the_way' ? near : null, t0?.pickup.point)
+  const tripRoute = useRoute(t0?.pickup.point, t0?.destination.point)
 
   if (trip.loading && !trip.data) return <Loading label="Loading the ride…" />
   if (trip.error || !trip.data) return <Screen title="Ride" onBack={back}><ErrorBlock message={trip.error?.message ?? 'Ride not found.'} onRetry={trip.reload} /></Screen>
@@ -67,9 +74,17 @@ export default function DriveTrip() {
       {step.error ? <Banner kind="danger" title={step.error} /> : null}
       {n ? <Button label={n.to === 'on_the_way' ? `${n.label} · ${eta} min` : n.label} size="lg" fullWidth loading={step.busy} onPress={go} /> : null}
     </>}>
-      <View style={{ height: 180, borderRadius: tokens.radius.lg, overflow: 'hidden' }}>
-        <FakeMap pickup={t.pickup.point} dropoff={toPickup ? null : t.destination.point} driver={driverPosition(t)}
-          route={toPickup ? null : fakeRoute(t.pickup.point, t.destination.point)} label={toPickup ? `Heading to ${t.pickup.name}` : `Driving to ${t.destination.name}`} />
+      <View style={{ height: 240, borderRadius: tokens.radius.lg, overflow: 'hidden' }}>
+        <RideMap pickup={t.pickup.point} dropoff={toPickup && t.status !== 'confirmed' ? null : t.destination.point} driver={shared?.point}
+          route={t.status === 'on_the_way' ? remaining(approach.route?.route, shared?.point) : t.status === 'arrived' ? null : t.status === 'in_progress' ? remaining(tripRoute.route?.route, shared?.point) : tripRoute.route?.route}
+          label={toPickup ? `Heading to ${t.pickup.name}` : `Driving to ${t.destination.name}`}>
+          {shared ? (
+            <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: tokens.radius.pill, backgroundColor: color('bg') }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color(shared.mode === 'gps' ? 'success' : 'warning') }} />
+              <Text variant="xs" weight={600}>{shared.mode === 'gps' ? 'Sharing live location' : 'Simulated drive (GPS outside service area)'}</Text>
+            </View>
+          ) : null}
+        </RideMap>
       </View>
       <View style={{ gap: 4 }} accessibilityLiveRegion="polite">
         <Eyebrow tone="accent">{statusLabel[t.status]}</Eyebrow>

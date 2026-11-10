@@ -3,16 +3,16 @@ import { Linking, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ban, BadgeCheck } from 'lucide-react-native'
 import { vehicle, payLabel } from '@/data/fleet'
-import { fakeRoute, formatUSD } from '@/data/places'
-import { carLine, driverName, driverPosition, formatWhen, minutesAway, statusLabel, trips, type Trip } from '@/data/trips'
-import { useAction, useLoad } from '@/data/hooks'
+import { formatUSD, remaining } from '@/data/places'
+import { carLine, driverName, driverPosition, formatWhen, livePosition, minutesAway, statusLabel, trips, type Trip } from '@/data/trips'
+import { useAction, useLoad, useRoute } from '@/data/hooks'
 import { DISPATCH_PHONE } from '@/data/booking'
 import { color, tokens } from '@/theme'
 import { ErrorBlock, Loading, Screen } from '@/ui/layout'
 import { Text } from '@/ui/Text'
 import { Button } from '@/ui/Button'
 import { Banner, Divider, EmptyState } from '@/ui/primitives'
-import { FakeMap } from '@/ui/map'
+import { RideMap } from '@/ui/map'
 import { DriverCard, RouteSummary, SearchingPulse, StarRating, StatusSteps } from '@/ui/trip'
 import { haptic } from '@/ui/haptics'
 import { CallButton, Eyebrow } from '@/ui/sm'
@@ -44,8 +44,14 @@ function Body({ t, reload }: { t: Trip; reload: () => void }) {
   const cancel = useAction(trips.cancel)
   const v = vehicle(t.vehicle)
   const d = t.driver
-  const away = minutesAway(t)
-  const toPickup = t.status === 'on_the_way' || t.status === 'arrived' || t.status === 'confirmed' || t.status === 'pending'
+  const live = livePosition(t)
+  const car = driverPosition(t)
+  const approaching = t.status === 'on_the_way' || t.status === 'arrived'
+  // Itinéraire du trajet, et celui du chauffeur jusqu'au client (recalculé tous les ~150 m).
+  const trip = useRoute(t.pickup.point, t.destination.point)
+  const near = (p: { lat: number; lng: number } | null) => (p ? { lat: +p.lat.toFixed(3), lng: +p.lng.toFixed(3) } : null)
+  const approach = useRoute(t.status === 'on_the_way' ? near(car) : null, t.pickup.point)
+  const away = t.status === 'on_the_way' && live && approach.route ? Math.max(1, Math.round(approach.route.durationS / 60)) : minutesAway(t)
   const done = t.status === 'completed' || t.status === 'cancelled'
   const at = order.indexOf(t.status as (typeof order)[number])
 
@@ -66,10 +72,17 @@ function Body({ t, reload }: { t: Trip; reload: () => void }) {
           action={<Button label="Book a new ride" onPress={() => router.navigate('/')} />} />
       ) : (
         <>
-          <View style={{ height: 200, borderRadius: tokens.radius.lg, overflow: 'hidden' }}>
-            <FakeMap pickup={t.pickup.point} dropoff={toPickup && t.status !== 'pending' && t.status !== 'confirmed' ? null : t.destination.point}
-              driver={driverPosition(t)} route={toPickup ? (t.status === 'pending' || t.status === 'confirmed' ? fakeRoute(t.pickup.point, t.destination.point) : null) : fakeRoute(t.pickup.point, t.destination.point)}
-              label={`Map: ${statusLabel[t.status]}`} />
+          <View style={{ height: 240, borderRadius: tokens.radius.lg, overflow: 'hidden' }}>
+            <RideMap pickup={t.pickup.point} dropoff={approaching ? null : t.destination.point} driver={car}
+              route={t.status === 'on_the_way' ? remaining(approach.route?.route, car) : approaching ? null : t.status === 'in_progress' ? remaining(trip.route?.route, car) : trip.route?.route}
+              label={`Map: ${statusLabel[t.status]}`}>
+              {live ? (
+                <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: tokens.radius.pill, backgroundColor: color('bg') }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color('success') }} />
+                  <Text variant="xs" weight={600}>Live</Text>
+                </View>
+              ) : null}
+            </RideMap>
           </View>
           <View style={{ gap: 4 }} accessibilityLiveRegion="polite">
             <Eyebrow tone="accent">{statusLabel[t.status]}</Eyebrow>

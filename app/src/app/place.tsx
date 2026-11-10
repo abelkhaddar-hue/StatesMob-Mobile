@@ -3,7 +3,7 @@ import { ScrollView, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { BedDouble, Building2, Clock, Flag, Landmark, LocateFixed, Map as MapIcon, MapPin, Plane, Search, ShoppingBag, TrainFront, X, type LucideIcon } from 'lucide-react-native'
-import { geo, type LngLat, type Place } from '@/data/places'
+import { geo, type Fix, type LngLat, type Place } from '@/data/places'
 import { draft, type PlaceField } from '@/data/draft'
 import { color, tokens, typeStyle } from '@/theme'
 import { inputFrame } from '@/ui/inputFrame'
@@ -11,7 +11,7 @@ import { Text } from '@/ui/Text'
 import { Button, IconButton } from '@/ui/Button'
 import { Touchable } from '@/ui/Pressable'
 import { Banner } from '@/ui/primitives'
-import { FakeMap } from '@/ui/map'
+import { RideMap } from '@/ui/map'
 import { Skeleton } from '@/ui/layout'
 
 const kindIcon: Record<NonNullable<Place['kind']>, LucideIcon> = { landmark: Landmark, airport: Plane, stadium: Flag, station: TrainFront, mall: ShoppingBag, street: Building2, hotel: BedDouble, recent: Clock }
@@ -49,13 +49,14 @@ export default function PlaceScreen() {
   const [mapMode, setMapMode] = useState(false)
   const [pin, setPin] = useState<LngLat | null>(null)
   const [pinPlace, setPinPlace] = useState<Place | null>(null)
-  const [me, setMe] = useState<LngLat | null>(null)
+  const [fix, setFix] = useState<Fix | null>(null)
+  const me = fix?.point ?? null
   const [focused, setFocused] = useState(false)
   const search = inputFrame({ focused })
 
-  useEffect(() => { geo.recent().then(setRecent).catch(() => {}); geo.myPosition().then(setMe).catch(() => {}) }, [])
+  useEffect(() => { geo.recent().then(setRecent).catch(() => {}); geo.locate().then(setFix).catch(() => {}) }, [])
 
-  // Recherche avec un petit délai pour ne pas interroger à chaque lettre (coût Places API).
+  // Recherche avec un petit délai pour ne pas interroger le service à chaque lettre.
   useEffect(() => {
     if (q.trim().length < 2) { setResults(null); return }
     let alive = true
@@ -73,18 +74,18 @@ export default function PlaceScreen() {
     return () => { alive = false }
   }, [pin])
 
-  const choose = (p: Place) => { draft.set({ [field]: p }); router.back() }
+  const choose = (p: Place) => { draft.set({ [field]: p }); geo.remember(p); router.back() }
   const current = draft.get()
 
   if (mapMode) {
     const start = pin ?? current[field]?.point ?? me
     return (
       <View style={{ flex: 1 }}>
-        <FakeMap me={me} pin={start} onPick={(p) => { setPin(p); setPinPlace(null) }} label="Map: tap to drop a pin">
+        <RideMap me={me} pin={start} onPick={(p) => { setPin(p); setPinPlace(null) }} label="Map: tap to drop a pin">
           <SafeAreaView edges={['top']} style={{ padding: tokens.layout.gutter }} pointerEvents="box-none">
             <IconButton icon={X} label="Back to search" onPress={() => setMapMode(false)} />
           </SafeAreaView>
-        </FakeMap>
+        </RideMap>
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: color('bg'), padding: tokens.layout.gutter, gap: 12 }}>
           <View style={{ width: '100%', maxWidth: tokens.layout['max-content'], alignSelf: 'center', gap: 12 }}>
             <Text variant="sm" tone="muted">{prompt[field]} Tap the map to drop a pin.</Text>
@@ -113,7 +114,11 @@ export default function PlaceScreen() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 8, gap: 4 }}>
           {!results && !searching ? (
             <>
-              {isPickup && me ? <PlaceRow place={{ id: 'me', name: 'My location', detail: 'Use GPS', point: me, kind: 'street' }} onPress={async () => choose(await geo.reverse(me))} /> : null}
+              {isPickup ? (
+                <PlaceRow place={{ id: 'me', name: 'My location', point: me ?? { lat: 0, lng: 0 }, kind: 'street',
+                  detail: !fix ? 'Finding you…' : fix.source === 'gps' ? 'Use my GPS position' : fix.source === 'outside' ? "You're outside our service area" : 'Location is off. Allow it in your browser settings' }}
+                  onPress={async () => { const f = await geo.locate(true); setFix(f); if (f.source === 'gps') choose(await geo.reverse(f.point)) }} />
+              ) : null}
               <Touchable onPress={() => setMapMode(true)} accessibilityRole="button" accessibilityLabel="Choose on map"
                 style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 56, paddingHorizontal: 16, borderRadius: tokens.radius.md, backgroundColor: pressed ? color('surface') : 'transparent' })}>
                 <View style={{ width: 40, height: 40, borderRadius: tokens.radius.pill, backgroundColor: color('accent-soft'), alignItems: 'center', justifyContent: 'center' }}>

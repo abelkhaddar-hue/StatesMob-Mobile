@@ -185,4 +185,6 @@ export const driving = {
   step: (id: string, status: DriverStep, eta?: number) => rpc<Trip>('driver', 'driver_step', { p_id: id, p_status: status, p_eta: eta ?? null }),
   release: (id: string) => rpc<Trip>('driver', 'driver_release', { p_id: id }),
   history: () => rpc<Trip[]>('driver', 'driver_trips'),
+  locate: (id: string, p: { lat: number; lng: number; heading: number }) =>
+    rpc<void>('driver', 'driver_location', { p_id: id, p_lat: p.lat, p_lng: p.lng, p_heading: Math.round(p.heading) }),
 }

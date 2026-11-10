@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError } from './booking'
+import { route, type LngLat, type Route } from './places'
 
 export type Loadable<T> = { data: T | undefined; error: ApiError | undefined; loading: boolean; reload: () => void }
 
@@ -50,4 +51,20 @@ export function useSecondsLeft(isoDate: string | undefined) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isoDate])
   return s
+}
+
+// Itinéraire réel entre deux points (null tant qu'on n'a pas les deux).
+export function useRoute(a?: LngLat | null, b?: LngLat | null) {
+  const [r, setR] = useState<Route | null>(null)
+  const [loading, setLoading] = useState(false)
+  const key = a && b ? [a.lng, a.lat, b.lng, b.lat].map((x) => x.toFixed(5)).join(',') : ''
+  useEffect(() => {
+    if (!a || !b) { setR(null); return }
+    let alive = true
+    setLoading(true)
+    route(a, b).then((x) => { if (alive) setR(x) }).finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return { route: r, loading }
 }

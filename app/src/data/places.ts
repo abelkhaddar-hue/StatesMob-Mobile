@@ -68,37 +68,142 @@ export function trip(a: LngLat, b: LngLat) {
   return { route, distanceM, durationS }
 }
 
-// ───────── recherche ─────────
+// ───────── itinéraire (OSRM, données OpenStreetMap) ─────────
 
-const RECENT = 'safemobility-recent'
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
-const uid = () => `PL${Date.now().toString(36).slice(-4)}${Math.random().toString(36).slice(2, 5)}`.toUpperCase()
+export type Route = { route: LngLat[]; distanceM: number; durationS: number; estimated?: boolean }
 
-function recentIds(): string[] {
-  try { const raw = globalThis.localStorage?.getItem(RECENT); return raw ? JSON.parse(raw) : [AIRPORT_ID, 'p4'] } catch { return [AIRPORT_ID, 'p4'] }
+const OSRM = 'https://router.project-osrm.org/route/v1/driving'
+const routes = new Map<string, Promise<Route>>()
+
+// Vrai trajet par la route : tracé, distance et durée. Si le service ne répond pas, estimation à vol d'oiseau.
+export function route(a: LngLat, b: LngLat): Promise<Route> {
+  const k = [a.lng, a.lat, b.lng, b.lat].map((x) => x.toFixed(5)).join(',')
+  if (!routes.has(k)) {
+    const p = (async () => {
+      const ctl = new AbortController()
+      const t = setTimeout(() => ctl.abort(), 8000)
+      try {
+        const res = await fetch(`${OSRM}/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`, { signal: ctl.signal })
+        const j = await res.json()
+        const r = j.routes?.[0]
+        if (j.code !== 'Ok' || !r) throw new Error(j.code)
+        return { route: (r.geometry.coordinates as [number, number][]).map(([lng, lat]) => ({ lng, lat })), distanceM: Math.round(r.distance), durationS: Math.round(r.duration) }
+      } catch {
+        routes.delete(k)
+        return { ...trip(a, b), estimated: true }
+      } finally { clearTimeout(t) }
+    })()
+    routes.set(k, p)
+  }
+  return routes.get(k)!
 }
 
+// ───────── recherche d'adresse (Photon, données OpenStreetMap) et GPS ─────────
+
+const PHOTON = 'https://photon.komoot.io'
+const RECENT = 'safemobility-recent-places'
+const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const uid = () => `PL${Date.now().toString(36).slice(-4)}${Math.random().toString(36).slice(2, 5)}`.toUpperCase()
+const states: Record<string, string> = { Ohio: 'OH', Kentucky: 'KY', Indiana: 'IN' }
+
+type PhotonFeature = { geometry: { coordinates: [number, number] }; properties: Record<string, string | undefined> }
+
+function kindOf(p: PhotonFeature['properties']): PlaceKind {
+  const k = p.osm_key, v = p.osm_value
+  if (k === 'aeroway') return 'airport'
+  if (k === 'tourism' && (v === 'hotel' || v === 'motel')) return 'hotel'
+  if (v === 'stadium' || v === 'sports_centre') return 'stadium'
+  if (k === 'railway' || v === 'station' || v === 'bus_station') return 'station'
+  if (k === 'shop' || v === 'mall' || v === 'marketplace') return 'mall'
+  if (k === 'highway' || k === 'building' || k === 'place') return 'street'
+  return 'landmark'
+}
+
+function toPlace(f: PhotonFeature): Place {
+  const p = f.properties
+  const street = [p.housenumber, p.street].filter(Boolean).join(' ')
+  const name = p.name || street || p.city || 'Pinned location'
+  const city = [p.city || p.town || p.village || p.county, p.state ? states[p.state] ?? p.state : undefined].filter(Boolean).join(', ')
+  const detail = [street && street !== name ? street : p.district, city].filter(Boolean).join(', ')
+  const [lng, lat] = f.geometry.coordinates
+  return { id: `${p.osm_type}${p.osm_id}`, name, detail: detail || 'Cincinnati area', point: { lat, lng }, kind: kindOf(p) }
+}
+
+async function photon(path: string): Promise<PhotonFeature[]> {
+  const res = await fetch(`${PHOTON}${path}`)
+  if (!res.ok) throw new Error(String(res.status))
+  return ((await res.json()).features ?? []) as PhotonFeature[]
+}
+
+function recentPlaces(): Place[] {
+  try { const raw = globalThis.localStorage?.getItem(RECENT); if (raw) return JSON.parse(raw) } catch { /* stockage indisponible */ }
+  return [AIRPORT_ID, 'p4'].map((id) => places.find((p) => p.id === id)!)
+}
+
+export type Fix = { point: LngLat; source: 'gps' | 'outside' | 'unavailable' }
+let lastFix: Promise<Fix> | null = null
+
 export const geo = {
-  myPosition: async () => { await wait(200); return { ...myPosition } },
+  // Position GPS du client. Hors zone desservie (ou GPS refusé) : centre-ville, et on le dit à l'écran.
+  locate: (fresh = false): Promise<Fix> => {
+    if (!lastFix || fresh) {
+      lastFix = (async (): Promise<Fix> => {
+        try {
+          const Location = await import('expo-location')
+          const { status } = await Location.requestForegroundPermissionsAsync()
+          if (status !== 'granted') return { point: { ...myPosition }, source: 'unavailable' }
+          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+          const point = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          return inArea(point) ? { point, source: 'gps' } : { point: { ...myPosition }, source: 'outside' }
+        } catch {
+          return { point: { ...myPosition }, source: 'unavailable' }
+        }
+      })()
+    }
+    return lastFix
+  },
+  myPosition: async () => (await geo.locate()).point,
   reverse: async (p: LngLat): Promise<Place> => {
-    const nearest = [...places].sort((a, b) => distanceM(a.point, p) - distanceM(b.point, p))[0]
-    const d = distanceM(nearest.point, p)
-    return d < 250 ? { ...nearest } : { id: uid(), name: `Near ${nearest.name}`, detail: `${Math.round(d / 1609.34 * 10) / 10} mi away · pinned location`, point: p, kind: 'street' }
+    const near = [...places].sort((a, b) => distanceM(a.point, p) - distanceM(b.point, p))[0]
+    if (distanceM(near.point, p) < 120) return { ...near }
+    try {
+      const [f] = await photon(`/reverse?lat=${p.lat}&lon=${p.lng}&lang=en&limit=1`)
+      if (f) return { ...toPlace(f), id: uid(), point: p }
+    } catch { /* service indisponible */ }
+    const d = distanceM(near.point, p)
+    return { id: uid(), name: `Near ${near.name}`, detail: `${Math.round(d / 1609.34 * 10) / 10} mi away · pinned location`, point: p, kind: 'street' }
   },
-  recent: async (): Promise<Place[]> => recentIds().map((id) => places.find((p) => p.id === id)).filter(Boolean).map((p) => ({ ...(p as Place), kind: 'recent' as const })),
+  recent: async (): Promise<Place[]> => recentPlaces().map((p) => ({ ...p, kind: 'recent' as const })),
   remember: (p: Place) => {
-    if (!places.some((x) => x.id === p.id)) return
-    const ids = [p.id, ...recentIds().filter((x) => x !== p.id)].slice(0, 4)
-    try { globalThis.localStorage?.setItem(RECENT, JSON.stringify(ids)) } catch { /* stockage indisponible */ }
+    const list = [{ ...p, kind: p.kind === 'recent' ? 'street' as const : p.kind }, ...recentPlaces().filter((x) => x.id !== p.id)].slice(0, 5)
+    try { globalThis.localStorage?.setItem(RECENT, JSON.stringify(list)) } catch { /* stockage indisponible */ }
   },
+  // Lieux connus d'abord (aéroport, hôtels…), puis toutes les adresses OpenStreetMap de la région.
   search: async (text: string): Promise<Place[]> => {
-    await wait(150)
     const q = norm(text.trim())
-    return q.length < 2 ? [] : places.filter((p) => norm(p.name).includes(q) || norm(p.detail).includes(q)).slice(0, 8)
+    if (q.length < 2) return []
+    const local = places.filter((p) => norm(p.name).includes(q) || norm(p.detail).includes(q)).slice(0, 4)
+    let found: Place[] = []
+    try {
+      const bbox = [area.minLng, area.minLat, area.maxLng, area.maxLat].join(',')
+      found = (await photon(`/api/?q=${encodeURIComponent(text.trim())}&lat=${myPosition.lat}&lon=${myPosition.lng}&bbox=${bbox}&limit=8&lang=en`)).map(toPlace)
+    } catch {
+      if (!local.length) throw new Error('Address search is unavailable right now. Try again, or drop a pin on the map.')
+    }
+    const fresh = found.filter((f) => !local.some((l) => distanceM(l.point, f.point) < 150))
+    const seen = new Set<string>()
+    return [...local, ...fresh].filter((p) => { const k = `${p.name}|${p.detail}`; if (seen.has(k)) return false; seen.add(k); return true }).slice(0, 8)
   },
 }
 
 export const formatUSD = (cents: number) => `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`
 export const formatMiles = (m: number) => `${(m / 1609.34).toLocaleString('en-US', { maximumFractionDigits: 1 })} mi`
 export const formatMinutes = (s: number) => `${Math.max(1, Math.round(s / 60))} min`
+
+// Reste du trajet à partir de la position actuelle (on coupe ce qui est déjà parcouru).
+export function remaining(r: LngLat[] | null | undefined, from: LngLat | null | undefined): LngLat[] | null {
+  if (!r?.length || !from) return r ?? null
+  let best = 0
+  r.forEach((p, i) => { if (distanceM(p, from) < distanceM(r[best], from)) best = i })
+  return [from, ...r.slice(best + 1)]
+}
