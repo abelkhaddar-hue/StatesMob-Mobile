@@ -56,7 +56,12 @@ export function RideMap({ pickup, dropoff, driver, me, route, children, label = 
     tiles.getContainer()!.style.filter = DARK
     m.attributionControl.setPrefix(false)
     m.on('click', (e: L.LeafletMouseEvent) => pickRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng }))
-    const ro = new ResizeObserver(() => m.invalidateSize())
+    // La carte peut naître avant d'avoir sa taille (0 px) : on recadre dès qu'elle en a une.
+    let sized = false
+    const ro = new ResizeObserver(() => {
+      m.invalidateSize()
+      if (!sized && el.clientWidth > 0 && el.clientHeight > 0) { sized = true; frameRef.current() }
+    })
     ro.observe(el)
     map.current = m
     return () => { ro.disconnect(); m.remove(); map.current = null; layers.current = {} }
@@ -92,14 +97,17 @@ export function RideMap({ pickup, dropoff, driver, me, route, children, label = 
 
   // Cadrage : tout ce qui compte tient dans la carte. L'épingle ne recadre pas (on la place sur une carte immobile).
   const frameKey = [routeKey, pickup?.lat, dropoff?.lat, me?.lat, !!driver].join('|')
-  useEffect(() => {
+  const frameRef = useRef(() => {})
+  frameRef.current = () => {
     const m = map.current
-    if (!m) return
+    const el = box.current as unknown as HTMLElement | null
+    if (!m || !el?.clientWidth || !el.clientHeight) return
     const pts = [pickup, dropoff, driver, me, ...(route ?? [])].filter(Boolean) as LngLat[]
     if (!pts.length) { if (!pin) m.setView(DOWNTOWN, 13); return }
     if (pts.length === 1) { m.setView(ll(pts[0]), 15); return }
     m.fitBounds(L.latLngBounds(pts.map(ll)), { padding: [40, 40], maxZoom: 16 })
-  }, [frameKey])
+  }
+  useEffect(() => { frameRef.current() }, [frameKey])
 
   // Le chauffeur sort du cadre : on recadre en le gardant visible.
   useEffect(() => {

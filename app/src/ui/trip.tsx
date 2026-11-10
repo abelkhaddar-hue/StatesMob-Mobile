@@ -180,7 +180,7 @@ export function ClockPicker({ value, onChange, earliest, label }: { value: strin
   const scroll = useRef<ScrollView>(null)
   const first = earliest != null ? Math.floor(earliest / 60) : 0
   useEffect(() => {
-    const target = h ?? first
+    const target = h ?? (earliest != null ? first : 6) // un autre jour : on commence vers 6 h du matin
     setTimeout(() => scroll.current?.scrollTo({ x: Math.max(0, target - 1) * 76, animated: false }), 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
